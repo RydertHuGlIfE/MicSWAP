@@ -12,11 +12,8 @@ def audio_callback(indata, frames, time_info, status):
     rms = np.sqrt(np.mean(indata**2))  # RMS signal val
     peak = np.max(np.abs(indata))        # peak signal val
 
-
+    
     print(f"RMS: {rms:.4f}, Peak: {peak:.4f}")
-
-    device = int(input("\n Enter Device index"))
-    print("\n LIstening : ctrl c stop....")
 
 
 
