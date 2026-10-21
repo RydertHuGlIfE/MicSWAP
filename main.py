@@ -13,13 +13,18 @@ def audio_callback(indata, frames, time_info, status):
     peak = np.max(np.abs(indata))        # peak signal val
 
     
-    print(f"RMS: {rms:.4f}, Peak: {peak:.4f}")
+    print(f"\rRMS: {rms:.4f}, Peak: {peak:.4f}", end="", flush=True)
 
 
 
 if __name__ == "__main__":
     print("Avail Audio dev: ")
     print(sd.query_devices())
+
+    for i, dev in enumerate(sd.query_devices()):
+        if dev['max_input_channels'] > 0:
+            if "(hw:" in dev['name'] or "Built-in Audio" in dev['name']:
+                print(f"{i}: {dev['name']}")
 
     device = int(input("\n Enter Device index: "))
     print("\n Listening : ctrl c stop....")
