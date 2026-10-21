@@ -30,8 +30,8 @@ def main():
 
                         if t_byt and t_byt % 48000 < CHUNK_SIZE:
                             print(
-                                f"\rReceived {total_bytes / 96000:.1f} seconds "
-                                f"of audio ({total_bytes} bytes)",
+                                f"\rReceived {t_byt / 96000:.1f} seconds "
+                                f"of audio ({t_byt} bytes)",
                                 end="",
                                 flush=True,
                             )
@@ -40,7 +40,7 @@ def main():
             except (ConnectionError, OSError) as exc:
                     print(f"\nSocket error: {exc}", flush=True)
 
-            print(f"\nSession total: {total} bytes", flush=True)
+            print(f"\nSession total: {t_byt} bytes", flush=True)
 
 
 
