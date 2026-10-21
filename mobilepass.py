@@ -30,6 +30,6 @@ if __name__ == "__main__":
     if devices:
         print("Connected mobile devices: ")
         for device in devices:
-            print(f" - {devices}")
+            print(f" - {device}")
     else:
         print("No auth device found")
