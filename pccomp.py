@@ -1,4 +1,6 @@
 import socket 
+from audio_output import AudioOutput
+import time
 
 HOST = "127.0.0.1"
 PORT = 50005
@@ -7,6 +9,8 @@ CHUNK_SIZE = 4096                  #same as main
 def main():
     print(f"reciever on {HOST}:{PORT}")
     print("waiting for dev")
+    audio = AudioOutput("null-sink")
+    audio.start()
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -26,15 +30,22 @@ def main():
                         if not data:
                             print("closed", flush=True)
                             break
+                        else:
+                            audio.write(data)
                         t_byt += len(data)    
 
-                        if t_byt and t_byt % 48000 < CHUNK_SIZE:
-                            print(
-                                f"\rReceived {t_byt / 96000:.1f} seconds "
-                                f"of audio ({t_byt} bytes)",
-                                end="",
-                                flush=True,
-                            )
+                        now = time.monotonic()
+                        last_log = 0
+
+                        if now - last_log >= 1:
+                                print(
+                                    f"\rReceived {t_byt / 96000:.1f} seconds "
+                                    f"of audio ({t_byt} bytes)",
+                                    end="",
+                                    flush=True,
+                                )
+                                last_log = now
+                            
                 print(f"\nconn closed at {addr}, {t_byt}")
 
             except (ConnectionError, OSError) as exc:
