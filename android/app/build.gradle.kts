@@ -6,7 +6,7 @@ plugins {
 android {
     namespace = "com.micswap.app"
     compileSdk = 35
-    buildToolsVersion = "37.0.0"
+    buildToolsVersion = "35.0.0"
 
     defaultConfig {
         applicationId = "com.micswap.app"
