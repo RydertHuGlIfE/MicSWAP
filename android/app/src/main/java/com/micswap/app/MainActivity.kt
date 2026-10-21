@@ -1,3 +1,4 @@
+
 package com.micswap.app
 
 import android.Manifest
@@ -11,17 +12,22 @@ import android.view.Gravity
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import java.io.BufferedOutputStream
+import java.net.InetSocketAddress
+import java.net.Socket
+import java.util.concurrent.atomic.AtomicBoolean
 
 class MainActivity : Activity() {
 
     private var audioRecord: AudioRecord? = null
     private var recordingThread: Thread? = null
-    private var isRecording = false
+    private val running = AtomicBoolean(false)
 
     private lateinit var status: TextView
     private lateinit var toggleButton: Button
 
     private val sampleRate = 48000
+    private val port = 50005
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,7 +41,7 @@ class MainActivity : Activity() {
         toggleButton = Button(this).apply {
             text = "Mic Transfer ON"
             setOnClickListener {
-                if (isRecording) stopMic() else requestMicPermission()
+                if (running.get()) stopMic() else requestMicPermission()
             }
         }
 
@@ -56,9 +62,7 @@ class MainActivity : Activity() {
         ) {
             startMic()
         } else {
-            requestPermissions(
-                arrayOf(Manifest.permission.RECORD_AUDIO), 100
-            )
+            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 100)
         }
     }
 
@@ -105,47 +109,115 @@ class MainActivity : Activity() {
         }
 
         audioRecord = recorder
-        recorder.startRecording()
-        isRecording = true
-        status.text = "Microphone capturing audio"
-        toggleButton.text = "Mic Transfer OFF"
+        running.set(true)
+        toggleButton.isEnabled = false
+        status.text = "Connecting to PC..."
 
         recordingThread = Thread {
-            val buffer = ShortArray(minBuffer / 2)
+            var socket: Socket? = null
+            var output: BufferedOutputStream? = null
 
-            while (isRecording) {
-                val count = recorder.read(
-                    buffer, 0, buffer.size,
-                    AudioRecord.READ_BLOCKING
-                )
+            try {
+                socket = Socket()
+                socket.connect(InetSocketAddress("127.0.0.1", port), 5000)
+                output = BufferedOutputStream(socket.getOutputStream())
 
-                if (count < 0) break
+                recorder.startRecording()
 
-                // Mono PCM samples are captured here.
-                // USB streaming will be added next.
+                runOnUiThread {
+                    status.text = "USB audio transfer ACTIVE"
+                    toggleButton.text = "Mic Transfer OFF"
+                    toggleButton.isEnabled = true
+                }
+
+                val samples = ShortArray(minBuffer / 2)
+                val bytes = ByteArray(samples.size * 2)
+
+                while (running.get()) {
+                    val count = recorder.read(
+                        samples, 0, samples.size, AudioRecord.READ_BLOCKING
+                    )
+
+                    if (count < 0) {
+                        throw RuntimeException("AudioRecord read failed: $count")
+                    }
+
+                    if (count == 0) continue
+
+                    // Convert signed 16-bit samples to little-endian PCM.
+                    for (i in 0 until count) {
+                        val sample = samples[i].toInt()
+                        bytes[i * 2] = (sample and 0xff).toByte()
+                        bytes[i * 2 + 1] =
+                            ((sample shr 8) and 0xff).toByte()
+                    }
+
+                    output.write(bytes, 0, count * 2)
+                    output.flush()
+                }
+            } catch (e: Exception) {
+                if (running.get()) {
+                    runOnUiThread {
+                        status.text = "Transfer error: ${e.message}"
+                    }
+                }
+            } finally {
+                running.set(false)
+
+                try {
+                    if (recorder.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
+                        recorder.stop()
+                    }
+                } catch (_: Exception) {
+                }
+
+                try {
+                    output?.close()
+                } catch (_: Exception) {
+                }
+
+                try {
+                    socket?.close()
+                } catch (_: Exception) {
+                }
+
+                recorder.release()
+                if (audioRecord === recorder) audioRecord = null
+
+                runOnUiThread {
+                    toggleButton.text = "Mic Transfer ON"
+                    toggleButton.isEnabled = true
+                    if (!isFinishing) {
+                        if (!status.text.toString().startsWith("Transfer error:")) {
+                            status.text = "Mic Transfer OFF"
+                        }
+                    }
+                }
             }
         }.also { it.start() }
     }
 
     private fun stopMic() {
-        isRecording = false
+        running.set(false)
+        toggleButton.isEnabled = false
 
         try {
             audioRecord?.stop()
-        } catch (_: IllegalStateException) {
+        } catch (_: Exception) {
         }
 
-        recordingThread?.join(500)
-        audioRecord?.release()
-        audioRecord = null
+        // Closing the socket unblocks a stalled write if necessary.
+        recordingThread?.interrupt()
+        recordingThread?.join(1000)
         recordingThread = null
 
-        status.text = "Mic Transfer OFF"
         toggleButton.text = "Mic Transfer ON"
+        toggleButton.isEnabled = true
+        status.text = "Mic Transfer OFF"
     }
 
     override fun onDestroy() {
-        if (isRecording) stopMic()
+        if (running.get()) stopMic()
         super.onDestroy()
     }
 }
