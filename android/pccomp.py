@@ -10,6 +10,7 @@ def main():
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind((HOST, PORT))
         s.listen(1)
 
         while True:
@@ -23,6 +24,7 @@ def main():
                     while True:
                         data = conn.recv(CHUNK_SIZE) #raw 48khz, 16bit lilendianPCM
                         if not data:
+                            print("closed", flush=True)
                             break
                         t_byt += len(data)    
 
@@ -35,9 +37,11 @@ def main():
                             )
                 print(f"\nconn closed at {addr}, {t_byt}")
 
-            except Exception as e:
-                print(f"\nconn error at {addr}: {e}")
-                conn.close()
+            except (ConnectionError, OSError) as exc:
+                    print(f"\nSocket error: {exc}", flush=True)
+
+            print(f"\nSession total: {total} bytes", flush=True)
+
 
 
 if __name__ == "__main__":
