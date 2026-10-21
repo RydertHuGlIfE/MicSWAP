@@ -15,7 +15,7 @@ def audio_callback(indata, frames, time_info, status):
 
     print(f"RMS: {rms:.4f}, Peak: {peak:.4f}")
 
-    devices = int(input("\n Enter Device index"))
+    device = int(input("\n Enter Device index"))
     print("\n LIstening : ctrl c stop....")
 
 
@@ -29,7 +29,7 @@ if __name__ == "__main__":
     
     try:
         with sd.InputStream(
-            device = devices, 
+            device = device, 
             samplerate = SAMPLE_R, 
             channels = CHANNELS, 
             blocksize = BLOCK_SIZE,
