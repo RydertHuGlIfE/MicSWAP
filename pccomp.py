@@ -1,6 +1,7 @@
 import socket 
 from audio_output import AudioOutput
 import time
+import subprocess
 
 HOST = "127.0.0.1"
 PORT = 50005
@@ -54,9 +55,42 @@ def main():
             print(f"\nSession total: {t_byt} bytes", flush=True)
 
 
-
 if __name__ == "__main__":
     try:
+    
+        cmd1 = subprocess.run(
+            ["adb", "devices"],
+            capture_output=True,
+            text=True)
+
+        if cmd1.returncode != 0:
+            print("[ERROR] ADB command failed.")
+            raise SystemExit(1)
+
+        devices = [
+            line.split()[0]
+            for line in cmd1.stdout.splitlines()[1:]
+            if len(line.split()) >= 2
+            and line.split()[1] == "device"
+        ]
+
+        if not devices:
+            print("[ERROR] No authorized Android device found.")
+            raise SystemExit(1)
+
+        command = subprocess.run(
+            ["adb", "reverse", "tcp:50005", "tcp:50005"],
+            capture_output=True,
+            text=True
+        )
+
+        if command.returncode != 0:
+            print("[ERROR] ADB reverse failed:")
+            print(command.stderr.strip())
+            raise SystemExit(1)
+
+        print("[OK] ADB reverse configured: tcp:50005")
         main()
+
     except KeyboardInterrupt:
-        print("\nStopped it rn")
+        print("\n[INFO] Stopped by user.")
