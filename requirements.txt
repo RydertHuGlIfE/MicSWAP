@@ -1,3 +1,4 @@
 pedalboard
 numpy
 sounddevice
+PySide6

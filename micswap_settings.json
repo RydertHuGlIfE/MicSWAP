@@ -1,0 +1,12 @@
+{
+  "last_preset": "custom",
+  "custom": {
+    "low_db": -12,
+    "mid_db": -12,
+    "high_db": 12,
+    "mid_frequency": 6586
+  },
+  "gain_db": 0.4,
+  "reverb_enabled": true,
+  "reverb_amount": 0.5
+}
